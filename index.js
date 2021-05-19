@@ -46,7 +46,7 @@ app.use(passport.session());
 mongoose.connect("mongodb://localhost/noveliaDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  useCreateIndex: true
+  useCreateIndex: true,
 });
 
 const db = mongoose.connection;
@@ -124,11 +124,11 @@ const Genre = mongoose.model("Genre", GenreSchema);
 const BookInfo = mongoose.model("BookInfo", BookInfoSchema);
 const Book = mongoose.model("Book", BookSchema);
 
-passport.serializeUser(function(user, done) {
+passport.serializeUser(function (user, done) {
   done(null, user);
 });
 
-passport.deserializeUser(function(user, done) {
+passport.deserializeUser(function (user, done) {
   done(null, user);
 });
 
@@ -203,6 +203,7 @@ app.get("/content/:name", (req, res) => {
         Book.findOne({ BookID: book._id }, (err, content) => {
           if (err) console.log(err);
           else {
+            console.log(content);
             res.send(content);
           }
         });
@@ -247,7 +248,35 @@ app.post("/register", (req, res) => {
   //   Username: req.body.username,
   //   Email: req.body.email
   // });
-  UserCon.register({email: email, username: username}, req.body.password, (err, user) => {
+  UserCon.register(
+    { email: email, username: username },
+    req.body.password,
+    (err, user) => {
+      if (err) {
+        console.log(err);
+        res.json({
+          success: false,
+          message: "Your account could not be saved. Error: ",
+          err,
+        });
+      } else {
+        console.log(user);
+        passport.authenticate("local")(req, res, () => {
+          // res.send("Successfully registered.");
+          res.json({ success: true, message: "Your account has been saved" });
+        });
+      }
+    }
+  );
+});
+
+app.post("/login", (req, res) => {
+  const user = new UserCon({
+    username: req.body.username,
+    password: req.body.password,
+  });
+
+  req.login(user, function (err) {
     if (err) {
       console.log(err);
       res.json({
@@ -256,54 +285,30 @@ app.post("/register", (req, res) => {
         err,
       });
     } else {
-      console.log(user);
-      passport.authenticate("local")(req, res, () => {
-        // res.send("Successfully registered.");
+      passport.authenticate("local")(req, res, function () {
         res.json({ success: true, message: "Your account has been saved" });
       });
     }
   });
 });
 
-app.post("/login", (req, res) => {
-  const user = new UserCon({
-    username: req.body.username,
-    password: req.body.password
-  });
-
-  req.login(user, function(err){
+app.post("/addChapter", (req, res) => {
+  console.log(req.body);
+  BookInfo.findOne({ Name: req.body.name }, (err, book) => {
     if (err) {
       console.log(err);
-      res.json({
-        success: false,
-        message: "Your account could not be saved. Error: ",
-        err,
-      });
     } else {
-      passport.authenticate("local")(req, res, function(){
-        res.json({ success: true, message: "Your account has been saved" });
-      });
-    }
-  });
-})
-
-app.post("/addChapter", (req, res) => {
-  BookInfo.findOne(
-    { Name: req.body.name, Author: req.body.author },
-    (err, book) => {
-      if (err) {
-        console.log(err);
-      } else {
-        // res.send(book);
-        if (book) {
-          // Book.updateOne({BookID: book._id}, {
-          //   $push: {
-          //     InBook: { Chapter: req.body.chapterName, Content: req.body.chapterContent }
-          //   }
-          // })
-          Book.findOne({ BookID: book._id }, (err, content) => {
-            if (err) console.log(err);
-            else {
+      // res.send(book);
+      if (book) {
+        // Book.updateOne({BookID: book._id}, {
+        //   $push: {
+        //     InBook: { Chapter: req.body.chapterName, Content: req.body.chapterContent }
+        //   }
+        // })
+        Book.findOne({ BookID: book._id }, (err, content) => {
+          if (err) console.log(err);
+          else {
+            if (req.body.chapterName && req.body.chapterContent) {
               content.InBook.push({
                 Chapter: req.body.chapterName,
                 Content: req.body.chapterContent,
@@ -318,13 +323,13 @@ app.post("/addChapter", (req, res) => {
               });
               res.send("success");
             }
-          });
-        } else {
-          res.send("No book found");
-        }
+          }
+        });
+      } else {
+        res.send("No book found");
       }
     }
-  );
+  });
 });
 
 app.listen(9000, () => {
