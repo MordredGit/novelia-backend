@@ -132,7 +132,6 @@ passport.deserializeUser(function (user, done) {
   done(null, user);
 });
 
-// const LocalStrategy = passportLocalMongoose.Strategy;
 passport.use(UserCon.createStrategy());
 
 // let book1 = new BookInfo({
@@ -174,31 +173,11 @@ app.get("/data", (req, res) => {
   });
 });
 
-// app.post("/content", (req, res) => {
-//   console.log(req.body.name);
-//   BookInfo.findOne({ Name: req.body.name }, (err, book) => {
-//     if (err) {
-//       console.log(err);
-//     } else {
-//       console.log(book);
-//       // res.send(book);
-//       Book.findOne({BookID: book._id}, (err, content) => {
-//         if (err) console.log(err);
-//         else {
-//           console.log(content);
-//           res.send(content);
-//         }
-//       })
-//     }
-//   });
-// });
-
 app.get("/content/:name", (req, res) => {
   BookInfo.findOne({ Name: req.params.name }, (err, book) => {
     if (err) {
       console.log(err);
     } else {
-      // res.send(book);
       if (book) {
         Book.findOne({ BookID: book._id }, (err, content) => {
           if (err) console.log(err);
@@ -224,7 +203,6 @@ app.get("/user", (req, res) => {
 app.post("/createBook", (req, res) => {
   console.log(req.body);
   let newBook = new BookInfo({
-    // BookID: 11223 + x,
     cover: req.body.file,
     Name: req.body.name,
     Author: req.body.author,
@@ -244,10 +222,6 @@ app.post("/register", (req, res) => {
 
   console.log(email, username, password);
 
-  // let newUser = new UserCon({
-  //   Username: req.body.username,
-  //   Email: req.body.email
-  // });
   UserCon.register(
     { email: email, username: username },
     req.body.password,
@@ -262,7 +236,6 @@ app.post("/register", (req, res) => {
       } else {
         console.log(user);
         passport.authenticate("local")(req, res, () => {
-          // res.send("Successfully registered.");
           res.json({ success: true, message: "Your account has been saved" });
         });
       }
@@ -298,13 +271,7 @@ app.post("/addChapter", (req, res) => {
     if (err) {
       console.log(err);
     } else {
-      // res.send(book);
       if (book) {
-        // Book.updateOne({BookID: book._id}, {
-        //   $push: {
-        //     InBook: { Chapter: req.body.chapterName, Content: req.body.chapterContent }
-        //   }
-        // })
         Book.findOne({ BookID: book._id }, (err, content) => {
           if (err) console.log(err);
           else {
