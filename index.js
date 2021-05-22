@@ -290,6 +290,25 @@ app.post("/addChapter", (req, res) => {
   });
 });
 
+app.get("/allbooks", (req, res) => {
+  BookInfo.find({}, (err, allBooks) => {
+    if (err) {
+      console.log(err);
+      res.json({
+        success: false,
+        message: "There was some error. Error: ",
+        err,
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "Successfull",
+        allBooks: allBooks
+      });
+    }
+  });
+});
+
 app.listen(9000, () => {
   console.log("Server started on port 9000");
 });
