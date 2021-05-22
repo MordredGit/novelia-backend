@@ -8,18 +8,6 @@ import moment from "moment";
 import session from "express-session";
 import passport from "passport";
 import passportLocalMongoose from "passport-local-mongoose";
-// import multer from "multer";
-
-// var storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, "uploads");
-//   },
-//   filename: (req, file, cb) => {
-//     cb(null, file.fieldname + "-" + Date.now());
-//   },
-// });
-
-// var upload = multer({ storage: storage });
 
 const data = "Working Properly!";
 // Express Initiation
@@ -56,8 +44,8 @@ db.on("error", console.error.bind(console, "Connection error: "));
 const Schema = mongoose.Schema;
 
 const UserConSchema = new Schema({
-  username: String,
-  email: String,
+  username: { type: String, unique: true, required: true },
+  email: { type: String, required: true, unique: true },
 });
 
 UserConSchema.plugin(passportLocalMongoose);
@@ -97,7 +85,6 @@ const GenreSchema = new Schema({
 });
 
 const BookInfoSchema = new Schema({
-  // BookID: Number,
   Name: String,
   Author: String,
   // Cover: { data: Buffer, contentType: String },
@@ -134,40 +121,12 @@ passport.deserializeUser(function (user, done) {
 
 passport.use(UserCon.createStrategy());
 
-// let book1 = new BookInfo({
-//   // BookID: 12345,
-//   Name: "The King of Drugs",
-//   Author: "Nora Barrett",
-//   DateOfCreation: moment("20140202", "YYYYMMDD"),
-//   NoOfChapter: 50,
-// });
-
-// let chaptername = "Old Man";
-// let content =
-//   "An old man lived in the village. He was one of the most unfortunate people in the world. The whole village was tired of him; he was always gloomy, he constantly complained and was always in a bad mood. The longer he lived, the more bile he was becoming and the more poisonous were his words. People avoided him, because his misfortune became contagious. It was even unnatural and insulting to be happy next to him. He created the feeling of unhappiness in others. But one day, when he turned eighty years old, an incredible thing happened.";
-
-// let book1content = new Book({
-//   BookID: book1._id,
-//   InBook: [
-//     { Chapter: chaptername, Content: content },
-//     { Chapter: chaptername, Content: content },
-//   ],
-// });
-
-// book1.save((err) => {
-//   if (err) console.log(err);
-// });
-
-// book1content.save((err) => {
-//   if (err) console.log(err);
-// });
-
 app.get("/", (_, res) => {
   res.send(data);
 });
 
-app.get("/data", (req, res) => {
-  BookInfo.findOne({ Name: "The King of Drugs" }, (err, book) => {
+app.get("/data/:name", (req, res) => {
+  BookInfo.findOne({ Name: req.params.name }, (err, book) => {
     if (err) console.log(err);
     else res.send(book);
   });
@@ -182,7 +141,7 @@ app.get("/content/:name", (req, res) => {
         Book.findOne({ BookID: book._id }, (err, content) => {
           if (err) console.log(err);
           else {
-            console.log(content);
+            // console.log(content);
             res.send(content);
           }
         });
@@ -201,18 +160,46 @@ app.get("/user", (req, res) => {
 });
 
 app.post("/createBook", (req, res) => {
-  console.log(req.body);
-  let newBook = new BookInfo({
-    cover: req.body.file,
-    Name: req.body.name,
-    Author: req.body.author,
-    DateOfCreation: moment(req.body.date, "YYYYMMDD"),
-    NoOfChapter: 0,
-  });
-  newBook.save((err) => {
-    if (err) console.log(err);
-  });
-  res.send("success");
+  BookInfo.exists(
+    { Name: req.body.name, Author: req.body.author },
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        res.json({
+          success: false,
+          message: "Book Creation Failed: ",
+          err,
+        });
+      } else {
+        console.log(result);
+        if (!result) {
+          let newBook = new BookInfo({
+            Name: req.body.name,
+            Author: req.body.author,
+            DateOfCreation: moment(req.body.date, "YYYYMMDD"),
+            NoOfChapter: 0,
+          });
+        
+          let newBookContent = new Book({
+            BookID: newBook._id,
+            InBook: [],
+          });
+          newBook.save((err) => err && console.log(err));
+          newBookContent.save((err) => err && console.log(err));
+          res.json({
+            success: result,
+            message: "New Book Created",
+          });
+        } else {
+          res.json({
+            success: result,
+            message: "Book Creation Failed: Book Already Exists",
+          });
+        }
+      }
+    }
+  );
+  
 });
 
 app.post("/register", (req, res) => {
@@ -237,6 +224,10 @@ app.post("/register", (req, res) => {
         console.log(user);
         passport.authenticate("local")(req, res, () => {
           res.json({ success: true, message: "Your account has been saved" });
+          let newUser = new User({
+            UserID: user._id,
+          });
+          newUser.save((err) => err && console.log(err));
         });
       }
     }
@@ -254,20 +245,20 @@ app.post("/login", (req, res) => {
       console.log(err);
       res.json({
         success: false,
-        message: "Your account could not be saved. Error: ",
+        message: "Your account could not be logged in. Error: ",
         err,
       });
     } else {
       passport.authenticate("local")(req, res, function () {
-        res.json({ success: true, message: "Your account has been saved" });
+        res.json({ success: true, message: "You are logged in!" });
       });
     }
   });
 });
 
 app.post("/addChapter", (req, res) => {
-  console.log(req.body);
-  BookInfo.findOne({ Name: req.body.name }, (err, book) => {
+  // console.log(req.body);
+  BookInfo.findOne({ Name: req.body.name, Author: req.body.author }, (err, book) => {
     if (err) {
       console.log(err);
     } else {
